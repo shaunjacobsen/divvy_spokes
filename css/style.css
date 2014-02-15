@@ -131,8 +131,7 @@ p {
 
 #chart_placeholder {
   text-align: center;
-  top: 10px;
-  margin: 20px 100px 20px 100px;
+  margin: 20px 20px 20px 0px;
   color:#fff;
   position: absolute;
   height: 100%;
