@@ -127,12 +127,12 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
 
     // Add an elaborate mouseover title for each chord.
     chord.append("title").text(function(d) {
-      return neighborhoods[d.source.index].name
-          + " → " + neighborhoods[d.target.index].name
-          + ": " + d.source.value
-          + "\n" + neighborhoods[d.target.index].name
-          + " → " + neighborhoods[d.source.index].name
-          + ": " + d.target.value;
+      if (!(neighborhoods[d.target.index].name === neighborhoods[d.source.index].name)) {
+      return numberWithCommas(d.source.value) + " trips from " + neighborhoods[d.source.index].name + " to " + neighborhoods[d.target.index].name + "\n" +
+        numberWithCommas(d.target.value) + " trips from " + neighborhoods[d.target.index].name + " to " + neighborhoods[d.source.index].name;
+      } else {
+        return numberWithCommas(d.source.value) + " trips started and ended in " + neighborhoods[d.source.index].name;
+      }
     });
 
     function mouseover(d, i) {
