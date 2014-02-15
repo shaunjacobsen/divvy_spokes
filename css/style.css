@@ -1,0 +1,140 @@
+@import url(http://fonts.googleapis.com/css?family=Exo+2:400,200,200italic);
+
+body {
+  background: #222;
+  color: #333;
+  width: 100%;
+}
+
+.about_text {
+  float:right;
+  width: 400px;
+  margin-right: 25px;
+}
+
+h1 {
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: -2px;
+  line-height: 1em;
+  margin: 10px 0px 20px 0px;
+  font-family: 'Exo 2', sans-serif;
+  color: #fff;
+}
+
+h1 strong {
+  color: #45b8e2;
+}
+
+.by {
+  font-size: 14px;
+  color: #fff;
+  margin-left: 4px;
+  letter-spacing: 0px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 200;
+}
+
+.by strong {
+  font-weight: 400;
+}
+
+.by img {
+  margin-bottom: -3px;
+  margin-left: 5px;
+}
+
+h2 {
+  margin-top: 28px;
+  margin-left: 4px;
+  font-size: 18px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 200;
+  color: #fff;
+}
+
+p {
+  margin-top: 18px;
+  margin-left: 4px;
+  font-size: 14px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 200;
+  color: #999;
+}
+
+p .source {
+  color: #999;
+  font-size: 14px;
+}
+
+p .more {
+  font-style: italic;
+  font-size: 12px;
+  color: #666;
+}
+
+#chart_placeholder {
+  text-align: center;
+  top: 10px;
+  margin: 20px 100px 20px 20px;
+  color:#fff;
+  position: absolute;
+}
+
+.dependencyWheel {
+  font: 10px sans-serif;
+}
+
+form .btn-primary {
+  margin-top: 25px;
+}
+
+#circle circle {
+  fill: none;
+}
+
+.labeltext {
+  color: #fff;
+}
+
+#circle circle {
+  fill: none;
+  pointer-events: all;
+}
+
+path.chord {
+  stroke: #000;
+  stroke-width: .10px;
+}
+
+#circle:hover path.fade {
+  display: none;
+}
+
+a {
+  text-decoration: none;
+  border-bottom: 1px dotted #666;
+  color: #999;
+}
+
+.more a {
+  color: #666;
+}
+
+.by a {
+  color: #fff;
+}
+
+a:hover {
+  color: #45b8e2;
+}
+
+a:not(:hover) {
+  text-decoration: none;
+}
+
+svg {
+  font-size: 10px;
+  color: #999;
+  font-family: 'Exo 2', sans-serif;
+}
