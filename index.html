@@ -25,7 +25,7 @@
     </div>
     <p>
     <div class="footer">
-      <span class="source">Trip data from <a href="http://divvybikes.com/datachallenge">Divvy</a>. Neighborhood locations from <a href="https://data.cityofchicago.org/Facilities-Geographic-Boundaries/Boundaries-Neighborhoods/bbvz-uum9">City of Chicago</a>.</span>
+      <span class="source">Trip data from <a href="http://divvybikes.com/datachallenge">Divvy</a>. Neighborhood locations from <a href="https://data.cityofchicago.org/Facilities-Geographic-Boundaries/Boundaries-Neighborhoods/bbvz-uum9">City of Chicago</a>. <strong>Fork on <a href="https://github.com/shaunjacobsen/divvy_spokes">GitHub.</a></strong></span>
     </p>
     <p>
       <span class="more">Based on Mike Bostock's <a href="http://bost.ocks.org/mike/uberdata/">Uber Rides by Neighborhood</a>. Built with <a href="http://d3js.org">d3.js</a>.</span>
@@ -40,9 +40,9 @@
 
 <script>
 
-var width = 800,
-    height = 720,
-    outerRadius = Math.min(width, height) / 2 - 10,
+var width = 650,
+    height = 600,
+    outerRadius = Math.min(width, height) / 2 - 50,
     innerRadius = outerRadius - 18;
 
 function numberWithCommas(x) {
@@ -98,17 +98,25 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
         .attr("d", arc)
         .style("fill", function(d, i) { return neighborhoods[i].color; });
 
-    // Add a text label.
-    var groupText = group.append("text")
-        .attr("x", 6)
-        .attr("dy", -10);
+    var rootGroup = d3.layout.chord().groups()[0];
 
-   groupText.append("textPath")
+    // Add a text label.
+    var groupText = group.append("text");
+
+   group.append("svg:text")
+        .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
         .attr("xlink:href", function(d, i) { return "#group" + i; })
-        .attr("class", "labeltext")
+        .attr("dy", ".35em")
+        .attr("color", "#fff")
+        .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
+        .attr("transform", function(d) {
+          return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+            " translate(" + (innerRadius + 26) + ")" +
+            (d.angle > Math.PI ? "rotate(180)" : "");
+        })
         .text(function(d, i) { return neighborhoods[i].name; });
 
-    // Remove the labels that don't fit.
+    /* Remove the labels that don't fit.
     groupText.filter(function(d, i) { return groupPath[0][i].getTotalLength() / 2 - 16 < this.getComputedTextLength(); })
         .remove();
 
