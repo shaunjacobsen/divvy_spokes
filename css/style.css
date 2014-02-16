@@ -129,6 +129,17 @@ p {
   color: #999;
 }
 
+.icons .disclaimer {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 9px;
+  font-weight: 200;
+  letter-spacing: 1px;
+  color: #666;
+  text-align: center;
+  font-style: italic;
+  margin-top: 18px;
+}
+
 #chart_placeholder {
   text-align: center;
   margin: 20px 20px 20px 0px;

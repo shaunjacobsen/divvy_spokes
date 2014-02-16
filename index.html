@@ -18,10 +18,11 @@
 
     <div class="icons">
     <p>Filter data:</p>
-      <a href="#"><div class="image"><img src="img/icons/icons-01.svg" height="64px" />Males</div></a>
-      <a href="#"><div class="image"><img src="img/icons/icons-02.svg" height="64px" />Females</div></a>
-      <a href="#"><div class="image"><img src="img/icons/icons-03.svg" height="64px" />Subscribers</div></a>
-      <a href="#"><div class="image"><img src="img/icons/icons-04.svg" height="64px" />Passholders</div></a>
+      <a href="#"><div class="image" id="male"><img src="img/icons/icons-01.svg" height="64px" />Males</div></a>
+      <a href="#"><div class="image" id="female"><img src="img/icons/icons-02.svg" height="64px" />Females</div></a>
+      <a href="#"><div class="image" id="subscriber"><img src="img/icons/icons-03.svg" height="64px" />Subscribers</div></a>
+      <a href="#"><div class="image" id="passholder"><img src="img/icons/icons-04.svg" height="64px" />Passholders</div></a>
+      <br /><p class="disclaimer">Male and female data available for subscribers only.</p>
     </div>
     <p>
     <div class="footer">
@@ -37,6 +38,8 @@
   <script src="js/d3.min.js"></script>
   <script src="js/d3.dependencyWheel.js"></script>
   <script src="js/composerBuilder.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
 
 <script>
 
@@ -44,6 +47,8 @@ function numberWithCommas(x) {
     x = Math.floor(x);
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
+
+var dataset = "data/all_trips.json";
 
 var width = 650,
     height = 600,
@@ -75,9 +80,9 @@ svg.append("circle")
     .attr("r", outerRadius);
 
 d3.csv("data/neighborhoods.csv", function(neighborhoods) {
-  d3.json("data/matrix.json", function(matrix) {
+  d3.json(dataset, function(matrix) {
 
-    // Compute the chord layout.
+    // Compute chord layout.
     layout.matrix(matrix);
 
     // Add a group per neighborhood.
@@ -124,7 +129,7 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
         .style("fill", function(d) { return neighborhoods[d.source.index].color; })
         .attr("d", path);
 
-    // Add an elaborate mouseover title for each chord.
+    // Add mouseover for each chord.
     chord.append("title").text(function(d) {
       if (!(neighborhoods[d.target.index].name === neighborhoods[d.source.index].name)) {
       return numberWithCommas(d.source.value) + " trips from " + neighborhoods[d.source.index].name + " to " + neighborhoods[d.target.index].name + "\n" +
@@ -144,6 +149,66 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
     }
   });
 });
+
+d3.select("#male").on("click", function () {
+  var new_data = "data/women_trips.json";
+  reRender(new_data);
+});
+
+function reRender(data) {
+  var layout = d3.layout.chord()
+  .padding(.03)
+  .sortSubgroups(d3.descending)
+  .matrix(data);
+
+  // Update arcs
+
+  svg.selectAll(".group")
+  .data(layout.groups)
+  .transition()
+  .duration(1500)
+  .attrTween("d", arcTween(last_chord));
+
+  // Update chords
+
+  svg.select(".chord")
+     .selectAll("path")
+     .data(layout.chords)
+     .transition()
+     .duration(1500)
+     .attrTween("d", chordTween(last_chord))
+
+};
+
+var arc =  d3.svg.arc()
+      .startAngle(function(d) { return d.startAngle })
+      .endAngle(function(d) { return d.endAngle })
+      .innerRadius(r0)
+      .outerRadius(r1);
+
+var chordl = d3.svg.chord().radius(r0);
+
+function arcTween(layout) {
+  return function(d,i) {
+    var i = d3.interpolate(layout.groups()[i], d);
+
+    return function(t) {
+      return arc(i(t));
+    }
+  }
+}
+
+function chordTween(layout) {
+  return function(d,i) {
+    var i = d3.interpolate(layout.chords()[i], d);
+
+    return function(t) {
+      return chordl(i(t));
+    }
+  }
+}
+
+
 
 </script>
 
