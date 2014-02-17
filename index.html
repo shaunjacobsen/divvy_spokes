@@ -57,6 +57,8 @@ var width = 650,
 
 var formatPercent = d3.format("%");
 
+var last_chord = {};
+
 var arc = d3.svg.arc()
     .innerRadius(innerRadius)
     .outerRadius(outerRadius);
@@ -129,6 +131,8 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
         .style("fill", function(d) { return neighborhoods[d.source.index].color; })
         .attr("d", path);
 
+    last_chord = chord;
+
     // Add mouseover for each chord.
     chord.append("title").text(function(d) {
       if (!(neighborhoods[d.target.index].name === neighborhoods[d.source.index].name)) {
@@ -176,9 +180,12 @@ function reRender(data) {
      .data(layout.chords)
      .transition()
      .duration(1500)
-     .attrTween("d", chordTween(last_chord))
+     .attrTween("d", chordTween(last_chord));
+
+last_chord = chord;
 
 };
+
 
 var arc =  d3.svg.arc()
       .startAngle(function(d) { return d.startAngle })
