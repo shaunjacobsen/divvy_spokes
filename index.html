@@ -22,6 +22,7 @@
       <a href="#"><div class="image" id="female"><img src="img/icons/icons-02.svg" height="64px" />Females</div></a>
       <a href="#"><div class="image" id="subscriber"><img src="img/icons/icons-03.svg" height="64px" />Subscribers</div></a>
       <a href="#"><div class="image" id="passholder"><img src="img/icons/icons-04.svg" height="64px" />Passholders</div></a>
+      <button id="#button">change</button>
       <br /><p class="disclaimer">Male and female data available for subscribers only.</p>
     </div>
     <p>
@@ -36,8 +37,6 @@
       <div id="chart_placeholder"></div>
 
   <script src="js/d3.min.js"></script>
-  <script src="js/d3.dependencyWheel.js"></script>
-  <script src="js/composerBuilder.js"></script>
   <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
   <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
 
@@ -131,7 +130,7 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
         .style("fill", function(d) { return neighborhoods[d.source.index].color; })
         .attr("d", path);
 
-    last_chord = chord;
+    last_layout = layout;
 
     // Add mouseover for each chord.
     chord.append("title").text(function(d) {
@@ -154,9 +153,12 @@ d3.csv("data/neighborhoods.csv", function(neighborhoods) {
   });
 });
 
-d3.select("#male").on("click", function () {
-  var new_data = "data/women_trips.json";
-  reRender(new_data);
+d3.select("#button").on("click", function () {
+  var new_data = d3.json("data/women_trips.json");
+  svg.selectAll(".chord")
+  .transition()
+  .each("end", function () { reRender(new_data); })
+  .duration(200)
 });
 
 function reRender(data) {
@@ -171,7 +173,7 @@ function reRender(data) {
   .data(layout.groups)
   .transition()
   .duration(1500)
-  .attrTween("d", arcTween(last_chord));
+  .attrTween("d", arcTween(last_layout));
 
   // Update chords
 
@@ -180,20 +182,19 @@ function reRender(data) {
      .data(layout.chords)
      .transition()
      .duration(1500)
-     .attrTween("d", chordTween(last_chord));
+     .attrTween("d", chordTween(last_layout));
 
-last_chord = chord;
+last_layout = layout;
 
-};
-
+}
 
 var arc =  d3.svg.arc()
       .startAngle(function(d) { return d.startAngle })
       .endAngle(function(d) { return d.endAngle })
-      .innerRadius(r0)
-      .outerRadius(r1);
+      .innerRadius(innerRadius)
+      .outerRadius(outerRadius);
 
-var chordl = d3.svg.chord().radius(r0);
+var chordl = d3.svg.chord().radius(innerRadius);
 
 function arcTween(layout) {
   return function(d,i) {
@@ -214,8 +215,6 @@ function chordTween(layout) {
     }
   }
 }
-
-
 
 </script>
 
