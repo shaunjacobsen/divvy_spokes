@@ -18,11 +18,11 @@
 
     <div class="icons">
     <p>Filter data:</p>
+      <a href="#"><div class="showall" id="all">Show All</div></a>
       <a href="#"><div class="image" id="male"><img src="img/icons/icons-01.svg" height="64px" />Males</div></a>
       <a href="#"><div class="image" id="female"><img src="img/icons/icons-02.svg" height="64px" />Females</div></a>
       <a href="#"><div class="image" id="subscriber"><img src="img/icons/icons-03.svg" height="64px" />Subscribers</div></a>
       <a href="#"><div class="image" id="passholder"><img src="img/icons/icons-04.svg" height="64px" />Passholders</div></a>
-      <button id="#button">change</button>
       <br /><p class="disclaimer">Male and female data available for subscribers only.</p>
     </div>
     <p>
@@ -42,19 +42,15 @@
 
 <script>
 
-function numberWithCommas(x) {
-    x = Math.floor(x);
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
+var formatPercent = d3.format("%");
+var numberWithCommas = d3.format("0,f");
 
 var dataset = "data/all_trips.json";
 
-var width = 650,
-    height = 600,
-    outerRadius = Math.min(width, height) / 2 - 25,
+var width = 800,
+    height = 700,
+    outerRadius = Math.min(width, height) / 2 - 100,
     innerRadius = outerRadius - 18;
-
-var formatPercent = d3.format("%");
 
 var last_chord = {};
 
@@ -62,159 +58,340 @@ var arc = d3.svg.arc()
     .innerRadius(innerRadius)
     .outerRadius(outerRadius);
 
-var layout = d3.layout.chord()
-    .padding(.03)
-    .sortSubgroups(d3.descending)
-    .sortChords(d3.ascending);
-
 var path = d3.svg.chord()
     .radius(innerRadius);
 
-var svg = d3.select("#chart_placeholder").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-  .append("g")
-    .attr("id", "circle")
-    .attr("transform", "translate(" + width / 1.5 + "," + height / 1.75 + ")");
+function getDefaultLayout() {
+    return d3.layout.chord()
+    .padding(0.03)
+    .sortSubgroups(d3.descending)
+    .sortChords(d3.ascending);
+}  
 
-svg.append("circle")
+var last_layout; //store layout between updates
+var neighborhoods; //store neighborhood data outside data-reading function
+
+/*** Initialize the visualization ***/
+var g = d3.select("#chart_placeholder").append("svg")
+        .attr("width", width)
+        .attr("height", height)
+    .append("g")
+        .attr("id", "circle")
+        .attr("transform", 
+              "translate(" + width / 2 + "," + height / 2 + ")");
+//the entire graphic will be drawn within this <g> element,
+//so all coordinates will be relative to the center of the circle
+
+g.append("circle")
     .attr("r", outerRadius);
 
-d3.csv("data/neighborhoods.csv", function(neighborhoods) {
-  d3.json(dataset, function(matrix) {
+/*** Read in neighborhoods data and update with initial data matrix ***/
 
-    // Compute chord layout.
+
+d3.csv("data/neighborhoods.csv", function(error, neighborhoodData) {
+    if (error) {alert("Error reading file: ", error.statusText); return; }
+    neighborhoods = neighborhoodData;
+    updateChords(dataset); 
+});
+
+/* Create OR update a chord layout from a data matrix */
+function updateChords( datasetURL ) {
+    
+  d3.json(datasetURL, function(error, matrix) {
+
+    if (error) {alert("Error reading file: ", error.statusText); return; }
+    
+    /* Compute chord layout. */
+    layout = getDefaultLayout(); //create a new layout object
     layout.matrix(matrix);
+ 
+    /* Create/update "group" elements */
+    var groupG = g.selectAll("g.group")
+        .data(layout.groups(), function (d) {
+            return d.index; 
+        });
+    
+    groupG.exit()
+        .transition()
+            .duration(1500)
+            .attr("opacity", 0)
+            .remove(); //remove after transitions are complete
+    
+    var newGroups = groupG.enter().append("g")
+        .attr("class", "group");
+    //the enter selection is stored in a variable so we can
+    //enter the <path>, <text>, and <title> elements as well
 
-    // Add a group per neighborhood.
-    var group = svg.selectAll(".group")
-        .data(layout.groups)
-      .enter().append("g")
-        .attr("class", "group")
-        .on("mouseover", mouseover);
+    
+    //Create the title tooltip for the new groups
+    newGroups.append("title");
+    
+    //Update the (tooltip) title text based on the data
+    groupG.select("title")
+        .text(function(d, i) {
+            return numberWithCommas(d.value) 
+                + " trips started in " 
+                + neighborhoods[i].name;
+        });
 
-    // Add a mouseover title.
-    group.append("title").text(function(d, i) {
-      return numberWithCommas(d.value) + " trips started in " + neighborhoods[i].name;
-    });
-
-    // Add the group arc.
-    var groupPath = group.append("path")
-        .attr("id", function(d, i) { return "group" + i; })
-        .attr("d", arc)
-        .style("fill", function(d, i) { return neighborhoods[i].color; });
-
-    var rootGroup = d3.layout.chord().groups()[0];
-
-    // Text label radiating outward from the group.
-    var groupText = group.append("text");
-
-   group.append("svg:text")
-        .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
-        .attr("xlink:href", function(d, i) { return "#group" + i; })
+    //create the arc paths and set the constant attributes
+    //(those based on the group index, not on the value)
+    newGroups.append("path")
+        .attr("id", function (d) {
+            return "group" + d.index;
+            //using d.index and not i to maintain consistency
+            //even if groups are sorted
+        })
+        .style("fill", function (d) {
+            return neighborhoods[d.index].color;
+        });
+    
+    //update the paths to match the layout
+    groupG.select("path") 
+        .transition()
+            .duration(1500)
+        .attrTween("d", arcTween( last_layout ));
+    
+    //create the group labels
+    newGroups.append("svg:text")
+        .attr("xlink:href", function (d) {
+            return "#group" + d.index;
+        })
         .attr("dy", ".35em")
         .attr("color", "#fff")
-        .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
-        .attr("transform", function(d) {
-          return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
-            " translate(" + (innerRadius + 26) + ")" +
-            (d.angle > Math.PI ? "rotate(180)" : "");
+        .text(function (d) {
+            return neighborhoods[d.index].name;
+        });
+
+    //position group labels to match layout
+    groupG.select("text")
+        .transition()
+            .duration(1500)
+            .attr("transform", function(d) {
+                d.angle = (d.startAngle + d.endAngle) / 2;
+                //store the midpoint angle in the data object
+                
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                    " translate(" + (innerRadius + 26) + ")" + 
+                    (d.angle > Math.PI ? " rotate(180)" : " rotate(0)"); 
+                //include the rotate zero so that transforms can be interpolated
+            })
+            .attr("text-anchor", function (d) {
+                return d.angle > Math.PI ? "end" : "begin";
+            });
+    
+    
+    /* Create/update the chord paths */
+    var chordPaths = g.selectAll("path.chord")
+        .data(layout.chords(), chordKey );
+            //specify a key function to match chords
+            //between updates
+        
+    
+    //create the new chord paths
+    var newChords = chordPaths.enter()
+        .append("path")
+        .attr("class", "chord");
+    
+    // Add title tooltip for each new chord.
+    newChords.append("title");
+    
+    // Update all chord title texts
+    chordPaths.select("title")
+        .text(function(d) {
+            if (neighborhoods[d.target.index].name !== neighborhoods[d.source.index].name) {
+                return [numberWithCommas(d.source.value),
+                        " trips from ",
+                        neighborhoods[d.source.index].name,
+                        " to ",
+                        neighborhoods[d.target.index].name,
+                        "\n",
+                        numberWithCommas(d.target.value),
+                        " trips from ",
+                        neighborhoods[d.target.index].name,
+                        " to ",
+                        neighborhoods[d.source.index].name
+                        ].join(""); 
+            } 
+            else { //source and target are the same
+                return numberWithCommas(d.source.value) 
+                    + " trips started and ended in " 
+                    + neighborhoods[d.source.index].name;
+            }
+        });
+
+    //handle exiting paths:
+    chordPaths.exit().transition()
+        .duration(1500)
+        .attr("opacity", 0)
+        .remove();
+
+    //update the path shape
+    chordPaths.transition()
+        .duration(1500)
+        .style("fill", function (d) {
+            return neighborhoods[d.source.index].color;
         })
-        .text(function(d, i) { return neighborhoods[i].name; });
+        .attrTween("d", chordTween(last_layout));
 
-    // Add the chords.
-    var chord = svg.selectAll(".chord")
-        .data(layout.chords)
-      .enter().append("path")
-        .attr("class", "chord")
-        .style("fill", function(d) { return neighborhoods[d.source.index].color; })
-        .attr("d", path);
-
-    last_layout = layout;
-
-    // Add mouseover for each chord.
-    chord.append("title").text(function(d) {
-      if (!(neighborhoods[d.target.index].name === neighborhoods[d.source.index].name)) {
-      return numberWithCommas(d.source.value) + " trips from " + neighborhoods[d.source.index].name + " to " + neighborhoods[d.target.index].name + "\n" +
-        numberWithCommas(d.target.value) + " trips from " + neighborhoods[d.target.index].name + " to " + neighborhoods[d.source.index].name;
-      } else {
-        return numberWithCommas(d.source.value) + " trips started and ended in " + neighborhoods[d.source.index].name;
-      }
+    groupG.on("mouseover", function(d) {
+        chordPaths.classed("fade", function (p) {
+            //returns true if *neither* the source or target of the chord
+            //matches the group that has been moused-over
+            return ((p.source.index != d.index) && (p.target.index != d.index));
+        });
     });
+    last_layout = layout; //save for next update
+    
+  }); //end of d3.json
+}
 
-    function mouseover(d, i) {
-      chord.classed("fade", function(p) {
-        return p.source.index != i
-            && p.target.index != i;
-      });
-      var selectedOrigin = d.value;
-      var selectedOriginName = neighborhoods[i].name;
+function arcTween(oldLayout) {
+    var oldGroups = {};
+    if (oldLayout) {
+        oldLayout.groups().forEach( function(groupData) {
+            oldGroups[ groupData.index ] = groupData;
+        });
     }
-  });
+    
+    return function (d, i) {
+        var tween;
+        var old = oldGroups[d.index];
+        if (old) { //there's a matching old group
+            tween = d3.interpolate(old, d);
+        }
+        else {
+            //create a zero-width arc object
+            var emptyArc = {startAngle:d.startAngle,
+                            endAngle:d.startAngle};
+            tween = d3.interpolate(emptyArc, d);
+        }
+        
+        return function (t) {
+            return arc( tween(t) );
+        };
+    };
+}
+
+function chordKey(data) {
+    return (data.source.index < data.target.index) ?
+        data.source.index  + "-" + data.target.index:
+        data.target.index  + "-" + data.source.index;
+    
+    //create a key that will represent the relationship
+    //between these two groups *regardless*
+    //of which group is called 'source' and which 'target'
+}
+function chordTween(oldLayout) {
+    //this function will be called once per update cycle
+    
+    //Create a key:value version of the old layout's chords array
+    //so we can easily find the matching chord 
+    //(which may not have a matching index)
+    
+    var oldChords = {};
+    
+    if (oldLayout) {
+        oldLayout.chords().forEach( function(chordData) {
+            oldChords[ chordKey(chordData) ] = chordData;
+        });
+    }
+    
+    return function (d, i) {
+        //this function will be called for each active chord
+        
+        var tween;
+        var old = oldChords[ chordKey(d) ];
+        if (old) {
+            //old is not undefined, i.e.
+            //there is a matching old chord value
+            
+            //check whether source and target have been switched:
+            if (d.source.index != old.source.index ){
+                //swap source and target to match the new data
+                old = {
+                    source: old.target,
+                    target: old.source
+                };
+            }
+            
+            tween = d3.interpolate(old, d);
+        }
+        else {
+            //create a zero-width chord object
+            if (oldLayout) {
+                var oldGroups = oldLayout.groups().filter(function(group) {
+                        return ( (group.index == d.source.index) ||
+                                 (group.index == d.target.index) )
+                    });
+                old = {source:oldGroups[0],
+                           target:oldGroups[1] || oldGroups[0] };
+                    //the OR in target is in case source and target are equal
+                    //in the data, in which case only one group will pass the
+                    //filter function
+                
+                if (d.source.index != old.source.index ){
+                    //swap source and target to match the new data
+                    old = {
+                        source: old.target,
+                        target: old.source
+                    };
+                }
+            }
+            else old = d;
+                
+            var emptyChord = {
+                source: { startAngle: old.source.startAngle,
+                         endAngle: old.source.startAngle},
+                target: { startAngle: old.target.startAngle,
+                         endAngle: old.target.startAngle}
+            };
+            tween = d3.interpolate( emptyChord, d );
+        }
+
+        return function (t) {
+            //this function calculates the intermediary shapes
+            return path(tween(t));
+        };
+    };
+}
+
+/* Activate the buttons and link to data sets */
+d3.select("#female").on("click", function () {
+    updateChords( "data/women_trips.json" );
+    disableButton(this);
 });
 
-d3.select("#button").on("click", function () {
-  var new_data = d3.json("data/women_trips.json");
-  svg.selectAll(".chord")
-  .transition()
-  .each("end", function () { reRender(new_data); })
-  .duration(200)
+d3.select("#male").on("click", function() {
+    updateChords( "data/men_trips.json" );
+    disableButton(this);
 });
 
-function reRender(data) {
-  var layout = d3.layout.chord()
-  .padding(.03)
-  .sortSubgroups(d3.descending)
-  .matrix(data);
+d3.select("#subscriber").on("click", function() {
+    updateChords( "data/subscriber_trips.json" );
+    disableButton(this);
+});
 
-  // Update arcs
+d3.select("#passholder").on("click", function() {
+    updateChords( "data/passholder_trips.json" );
+    disableButton(this);
+});
 
-  svg.selectAll(".group")
-  .data(layout.groups)
-  .transition()
-  .duration(1500)
-  .attrTween("d", arcTween(last_layout));
+d3.select("#all").on("click", function() {
+    updateChords( "data/all_trips.json" );
+    disableButton(this);
+});
 
-  // Update chords
-
-  svg.select(".chord")
-     .selectAll("path")
-     .data(layout.chords)
-     .transition()
-     .duration(1500)
-     .attrTween("d", chordTween(last_layout));
-
-last_layout = layout;
-
+function disableButton(buttonNode) {
+    d3.selectAll("div")
+        .attr("disabled", function(d) {
+            return this === buttonNode ? "true" : null;
+        })
+        .attr("style", function(d) {
+            return this === buttonNode ? "color:#45b8e2;" : "color:#999;";
+        });
 }
 
-var arc =  d3.svg.arc()
-      .startAngle(function(d) { return d.startAngle })
-      .endAngle(function(d) { return d.endAngle })
-      .innerRadius(innerRadius)
-      .outerRadius(outerRadius);
-
-var chordl = d3.svg.chord().radius(innerRadius);
-
-function arcTween(layout) {
-  return function(d,i) {
-    var i = d3.interpolate(layout.groups()[i], d);
-
-    return function(t) {
-      return arc(i(t));
-    }
-  }
-}
-
-function chordTween(layout) {
-  return function(d,i) {
-    var i = d3.interpolate(layout.chords()[i], d);
-
-    return function(t) {
-      return chordl(i(t));
-    }
-  }
-}
 
 </script>
 
